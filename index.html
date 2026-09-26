@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Мысль дня</title>
+<style>
+:root{
+  --text:#f5f5f7;
+  --muted:rgba(245,245,247,.65);
+  --glass:rgba(255,255,255,.09);
+  --glass-border:rgba(255,255,255,.16);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color:var(--text);
+  min-height:100vh;min-height:100dvh;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+  background:linear-gradient(160deg,#1a1a2e,#16213e,#0f3460);
+  transition:background 1.2s ease;
+}
+.container{width:100%;max-width:480px;text-align:center;position:relative;z-index:1}
+.date{
+  text-transform:uppercase;letter-spacing:2px;font-size:13px;
+  color:var(--muted);margin-bottom:20px;
+}
+.card{
+  background:var(--glass);
+  border:1px solid var(--glass-border);
+  border-radius:24px;
+  padding:36px 28px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  box-shadow:0 20px 50px rgba(0,0,0,.35);
+  position:relative;overflow:hidden;
+}
+.card::before{
+  content:"«";position:absolute;top:-30px;left:6px;
+  font-size:140px;font-family:Georgia,serif;
+  color:rgba(255,255,255,.07);line-height:1;
+}
+#quoteWrap{transition:opacity .3s ease,transform .3s ease}
+#quoteWrap.fade{opacity:0;transform:translateY(10px)}
+.quote{
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:23px;line-height:1.5;font-style:italic;
+  position:relative;z-index:1;
+}
+.author{margin-top:18px;font-size:15px;color:var(--muted)}
+.counter{margin-top:18px;font-size:12px;color:var(--muted);letter-spacing:1px}
+.actions{display:flex;gap:14px;justify-content:center;margin-top:24px}
+.actions button{
+  width:52px;height:52px;border-radius:50%;border:1px solid var(--glass-border);
+  background:var(--glass);color:var(--text);font-size:20px;cursor:pointer;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  transition:transform .15s ease,background .2s;
+}
+.actions button:active{transform:scale(.9);background:rgba(255,255,255,.2)}
+
+/* Шторка настроек */
+.backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .3s;z-index:10;
+}
+.backdrop.open{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:#1c1c2e;border-top:1px solid var(--glass-border);
+  border-radius:24px 24px 0 0;padding:12px 22px 32px;
+  max-height:85vh;overflow-y:auto;
+  transform:translateY(105%);transition:transform .35s cubic-bezier(.3,1,.4,1);
+}
+.sheet.open{transform:translateY(0)}
+.handle{width:44px;height:4px;border-radius:2px;background:rgba(255,255,255,.25);margin:6px auto 18px}
+.sheet h2{font-size:20px;margin-bottom:6px}
+.stat{color:var(--muted);font-size:14px;margin-bottom:18px}
+.btn{
+  display:block;width:100%;padding:14px;margin-bottom:10px;
+  border-radius:14px;border:1px solid var(--glass-border);
+  background:var(--glass);color:var(--text);font-size:16px;cursor:pointer;
+}
+.btn.primary{background:#4a6cf7;border-color:#4a6cf7;font-weight:600}
+.btn.danger{background:rgba(255,80,80,.15);border-color:rgba(255,80,80,.4);color:#ff9a9a}
+.hint{font-size:12px;color:var(--muted);margin:-4px 0 16px;line-height:1.5}
+textarea{
+  width:100%;height:90px;resize:none;padding:12px;margin-bottom:10px;
+  border-radius:14px;border:1px solid var(--glass-border);
+  background:rgba(0,0,0,.25);color:var(--text);font-size:15px;font-family:inherit;
+}
+.row{display:flex;gap:10px}
+.row .btn{flex:1}
+
+.toast{
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:rgba(0,0,0,.85);padding:12px 22px;border-radius:30px;
+  font-size:14px;transition:transform .3s ease;z-index:30;white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="date" id="dateLabel"></div>
+  <div class="card">
+    <div id="quoteWrap">
+      <div class="quote" id="quoteText"></div>
+      <div class="author" id="authorText"></div>
+    </div>
+  </div>
+  <div class="counter" id="counterLabel"></div>
+  <div class="actions">
+    <button id="copyBtn" title="Копировать">📋</button>
+    <button id="shuffleBtn" title="Случайное">🔀</button>
+    <button id="shareBtn" title="Поделиться">📤</button>
+    <button id="settingsBtn" title="Настройки">⚙️</button>
+  </div>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet">
+  <div class="handle"></div>
+  <h2>Настройки</h2>
+  <div class="stat" id="statLabel"></div>
+
+  <button class="btn primary" id="uploadBtn">📁 Загрузить файл (.txt / .json / .csv)</button>
+  <p class="hint">В .txt — по одному выражению на строку. Автор указывается через «|»:<br>Текст выражения | Автор</p>
+
+  <textarea id="manualInput" placeholder="Добавить вручную (каждое с новой строки)…"></textarea>
+  <button class="btn" id="addBtn">➕ Добавить</button>
+
+  <div class="row">
+    <button class="btn" id="exportBtn">💾 Скачать список</button>
+    <button class="btn danger" id="resetBtn">🗑 Сбросить</button>
+  </div>
+  <button class="btn" id="closeBtn">Закрыть</button>
+</div>
+
+<input type="file" id="fileInput" accept=".txt,.json,.csv,text/plain,application/json" hidden>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'daily_quotes_v1';
+
+const DEFAULT_QUOTES = [
+  {t:'Дорогу осилит идущий.', a:''},
+  {t:'Не откладывай на завтра то, что можно сделать сегодня.', a:''},
+  {t:'Семь раз отмерь — один раз отрежь.', a:''},
+  {t:'Терпение и труд всё перетрут.', a:''},
+  {t:'Глаза боятся, а руки делают.', a:''},
+  {t:'Слово не воробей: вылетит — не поймаешь.', a:''},
+  {t:'Друзья познаются в беде.', a:''},
+  {t:'Ученье — свет, а неученье — тьма.', a:''},
+  {t:'Тише едешь — дальше будешь.', a:''},
+  {t:'Без труда не вытащишь и рыбку из пруда.', a:''},
+  {t:'Мы в ответе за тех, кого приручили.', a:'Антуан де Сент-Экзюпери'},
+  {t:'Красота спасёт мир.', a:'Фёдор Достоевский'},
+  {t:'Всё в наших руках, поэтому нельзя их опускать.', a:'Коко Шанель'},
+  {t:'Лучший способ предсказать будущее — создать его.', a:'Алан Кэй'},
+  {t:'Единственный способ делать великие дела — любить то, что делаешь.', a:'Стив Джобс'}
+];
+
+const THEMES = [
+  ['#0f2027','#203a43','#2c5364'], ['#1a1a2e','#16213e','#0f3460'],
+  ['#141e30','#243b55','#2c5364'], ['#2b5876','#4e4376','#1a1a2e'],
+  ['#000428','#004e92','#16213e'], ['#1f1c2c','#3a3660','#928dab'],
+  ['#232526','#414345','#232526'], ['#16222a','#3a6073','#16222a']
+];
+
+let quotes = load();
+let shownIndex = 0;
+let currentSeed = daySeed();
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const arr = JSON.parse(raw);
+      if(Array.isArray(arr) && arr.length) return arr;
+    }
+  }catch(e){}
+  return DEFAULT_QUOTES.slice();
+}
+function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(quotes)); }catch(e){} }
+
+function daySeed(){
+  const n = new Date();
+  return Math.floor(Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) / 86400000);
+}
+function pickDaily(){
+  const h = Math.imul(daySeed(), 2654435761) >>> 0;
+  return h % quotes.length;
+}
+
+function render(index){
+  shownIndex = index;
+  const q = quotes[index] || {t:'Добавьте выражения в настройках ⚙️', a:''};
+  const wrap = document.getElementById('quoteWrap');
+  wrap.classList.add('fade');
+  setTimeout(()=>{
+    document.getElementById('quoteText').textContent = '«' + q.t + '»';
+    const a = document.getElementById('authorText');
+    a.textContent = q.a ? '— ' + q.a : '';
+    a.style.display = q.a ? 'block' : 'none';
+    wrap.classList.remove('fade');
+  }, 250);
+  const th = THEMES[daySeed() % THEMES.length];
+  document.body.style.background = `linear-gradient(160deg,${th[0]},${th[1]},${th[2]})`;
+  document.getElementById('dateLabel').textContent =
+    new Intl.DateTimeFormat('ru-RU',{weekday:'long',day:'numeric',month:'long'}).format(new Date());
+  document.getElementById('counterLabel').textContent =
+    quotes.length ? `Выражение ${index+1} из ${quotes.length}` : '';
+}
+function refreshDaily(){ render(pickDaily()); }
+
+/* ── Парсинг загруженных данных ── */
+function parseContent(text, name){
+  let items = [];
+  const ext = (name||'').toLowerCase().split('.').pop();
+  if(ext === 'json' || /^[\s]*[[{]/.test(text)){
+    try{
+      let data = JSON.parse(text);
+      if(!Array.isArray(data) && Array.isArray(data.quotes)) data = data.quotes;
+      if(Array.isArray(data)){
+        items = data.map(x => typeof x === 'string'
+          ? {t:x, a:''}
+          : {t:String(x.text||x.t||''), a:String(x.author||x.a||'')})
+          .filter(x=>x.t.trim());
+      }
+    }catch(e){}
+  }
+  if(!items.length){
+    let lines = text.split(/\r?\n/);
+    if(lines.filter(l=>l.trim()).length <= 1 && text.includes(';')) lines = text.split(';');
+    items = lines.map(line=>{
+      let t = line.trim(), a = '';
+      if(t.includes('|')){
+        const p = t.split('|');
+        t = p[0].trim(); a = p.slice(1).join('|').trim();
+      }
+      return {t, a};
+    }).filter(x=>x.t);
+  }
+  return items;
+}
+
+function mergeQuotes(newItems){
+  const existing = new Set(quotes.map(q=>q.t.toLowerCase()));
+  let added = 0;
+  for(const item of newItems){
+    const key = item.t.toLowerCase();
+    if(!existing.has(key)){ existing.add(key); quotes.push(item); added++; }
+  }
+  return added;
+}
+
+/* ── UI: тосты, модалка ── */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function openSheet(){
+  document.getElementById('statLabel').textContent = `Сейчас в базе: ${quotes.length} выражений`;
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('backdrop').classList.add('open');
+}
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('backdrop').classList.remove('open');
+}
+
+/* ── Кнопки ── */
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); }
+  catch(e){
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+  showToast('Скопировано 📋');
+}
+
+document.getElementById('copyBtn').onclick = ()=>{
+  const q = quotes[shownIndex];
+  copyText(q.a ? `«${q.t}» — ${q.a}` : `«${q.t}»`);
+};
+document.getElementById('shuffleBtn').onclick = ()=>{
+  if(quotes.length < 2) return;
+  let i; do{ i = Math.floor(Math.random()*quotes.length); }while(i === shownIndex);
+  render(i);
+};
+document.getElementById('shareBtn').onclick = async ()=>{
+  const q = quotes[shownIndex];
+  const text = q.a ? `«${q.t}» — ${q.a}` : `«${q.t}»`;
+  if(navigator.share){ try{ await navigator.share({text}); }catch(e){} }
+  else copyText(text);
+};
+document.getElementById('settingsBtn').onclick = openSheet;
+document.getElementById('closeBtn').onclick = closeSheet;
+document.getElementById('backdrop').onclick = closeSheet;
+
+document.getElementById('uploadBtn').onclick = ()=>document.getElementById('fileInput').click();
+document.getElementById('fileInput').onchange = e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const items = parseContent(reader.result, file.name);
+    if(!items.length){ showToast('Не удалось найти выражения в файле'); return; }
+    const added = mergeQuotes(items);
+    save(); refreshDaily(); openSheet();
+    showToast(added ? `Добавлено: ${added} шт.` : 'Все уже есть в базе');
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+};
+
+document.getElementById('addBtn').onclick = ()=>{
+  const ta = document.getElementById('manualInput');
+  const items = parseContent(ta.value, '');
+  if(!items.length){ showToast('Поле пустое'); return; }
+  const added = mergeQuotes(items);
+  save(); ta.value = ''; refreshDaily(); openSheet();
+  showToast(added ? `Добавлено: ${added} шт.` : 'Дубликаты, не добавлено');
+};
+
+document.getElementById('exportBtn').onclick = ()=>{
+  const text = quotes.map(q => q.a ? `${q.t} | ${q.a}` : q.t).join('\n');
+  const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'quotes.txt'; a.click();
+  URL.revokeObjectURL(a.href);
+};
+document.getElementById('resetBtn').onclick = ()=>{
+  if(confirm('Удалить все загруженные выражения и вернуть стандартный набор?')){
+    quotes = DEFAULT_QUOTES.slice(); save(); refreshDaily(); openSheet();
+    showToast('Восстановлен стандартный набор');
+  }
+};
+
+/* ── Автосмена в полночь ── */
+setInterval(()=>{
+  if(daySeed() !== currentSeed){ currentSeed = daySeed(); refreshDaily(); }
+}, 30000);
+
+/* ── Service Worker (если файл размещён на сайте) ── */
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+refreshDaily();
+</script>
+</body>
+</html>
